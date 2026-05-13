@@ -1,0 +1,13 @@
+.env
+bin/
+tmp/
+.DS_Store
+
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+*.test
+coverage.out
