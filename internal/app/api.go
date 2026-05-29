@@ -16,6 +16,9 @@ import (
 	"github.com/VarvaraKurakova/fleet-events-api/internal/config"
 	"github.com/VarvaraKurakova/fleet-events-api/internal/health"
 	httptransport "github.com/VarvaraKurakova/fleet-events-api/internal/http"
+	"github.com/VarvaraKurakova/fleet-events-api/internal/http/handlers"
+	"github.com/VarvaraKurakova/fleet-events-api/internal/repository/postgres"
+	"github.com/VarvaraKurakova/fleet-events-api/internal/service"
 )
 
 func RunAPI(cfg config.Config, logger *slog.Logger) error {
@@ -51,7 +54,11 @@ func RunAPI(cfg config.Config, logger *slog.Logger) error {
 
 	checker := health.NewChecker(postgresPool, redisClient, rabbitConn)
 
-	router := httptransport.NewRouter(logger, checker)
+	fleetRepository := postgres.NewFleetRepository(postgresPool)
+	fleetService := service.NewFleetService(fleetRepository)
+	fleetHandler := handlers.NewFleetHandler(fleetService)
+
+	router := httptransport.NewRouter(logger, checker, fleetHandler)
 
 	server := &http.Server{
 		Addr:         cfg.HTTP.Addr,
