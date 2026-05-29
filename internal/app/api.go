@@ -9,7 +9,12 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/rabbitmq/amqp091-go"
+	"github.com/redis/go-redis/v9"
+
 	"github.com/VarvaraKurakova/fleet-events-api/internal/config"
+	"github.com/VarvaraKurakova/fleet-events-api/internal/health"
 	httptransport "github.com/VarvaraKurakova/fleet-events-api/internal/http"
 )
 
@@ -17,7 +22,36 @@ func RunAPI(cfg config.Config, logger *slog.Logger) error {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	router := httptransport.NewRouter(logger)
+	postgresPool, err := pgxpool.New(ctx, cfg.Postgres.DSN)
+	if err != nil {
+		return err
+	}
+	defer postgresPool.Close()
+
+	if err := postgresPool.Ping(ctx); err != nil {
+		return err
+	}
+
+	redisClient := redis.NewClient(&redis.Options{
+		Addr:     cfg.Redis.Addr,
+		Password: cfg.Redis.Password,
+		DB:       0,
+	})
+	defer redisClient.Close()
+
+	if err := redisClient.Ping(ctx).Err(); err != nil {
+		return err
+	}
+
+	rabbitConn, err := amqp091.Dial(cfg.RabbitMQ.URL)
+	if err != nil {
+		return err
+	}
+	defer rabbitConn.Close()
+
+	checker := health.NewChecker(postgresPool, redisClient, rabbitConn)
+
+	router := httptransport.NewRouter(logger, checker)
 
 	server := &http.Server{
 		Addr:         cfg.HTTP.Addr,
