@@ -62,7 +62,17 @@ func RunAPI(cfg config.Config, logger *slog.Logger) error {
 	vehicleService := service.NewVehicleService(vehicleRepository, fleetRepository)
 	vehicleHandler := handlers.NewVehicleHandler(vehicleService)
 
-	router := httptransport.NewRouter(logger, checker, fleetHandler, vehicleHandler)
+	deviceRepository := postgres.NewDeviceRepository(postgresPool)
+	deviceService := service.NewDeviceService(deviceRepository, vehicleRepository)
+	deviceHandler := handlers.NewDeviceHandler(deviceService)
+
+	router := httptransport.NewRouter(
+		logger,
+		checker,
+		fleetHandler,
+		vehicleHandler,
+		deviceHandler,
+	)
 
 	server := &http.Server{
 		Addr:         cfg.HTTP.Addr,

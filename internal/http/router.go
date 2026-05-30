@@ -16,6 +16,7 @@ func NewRouter(
 	checker *health.Checker,
 	fleetHandler *handlers.FleetHandler,
 	vehicleHandler *handlers.VehicleHandler,
+	deviceHandler *handlers.DeviceHandler,
 ) http.Handler {
 	r := chi.NewRouter()
 
@@ -31,6 +32,9 @@ func NewRouter(
 		r.Post("/vehicles", vehicleHandler.Create)
 		r.Get("/vehicles", vehicleHandler.List)
 		r.Get("/vehicles/{id}", vehicleHandler.GetByID)
+		r.Post("/devices", deviceHandler.Create)
+		r.Get("/devices", deviceHandler.List)
+		r.Get("/devices/{id}", deviceHandler.GetByID)
 	})
 
 	return r
