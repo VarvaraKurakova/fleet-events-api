@@ -3,8 +3,12 @@ package postgres
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
+
+	"github.com/VarvaraKurakova/fleet-events-api/internal/apperrors"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -97,6 +101,59 @@ func (r *EventRepository) Create(
 	)
 	if err != nil {
 		return domain.Event{}, fmt.Errorf("create event: %w", err)
+	}
+
+	return event, nil
+}
+
+func (r *EventRepository) GetLatestByVehicleID(
+	ctx context.Context,
+	vehicleID uuid.UUID,
+) (domain.Event, error) {
+	const query = `
+		SELECT
+			id,
+			device_id,
+			vehicle_id,
+			event_type,
+			event_time,
+			received_at,
+			lat,
+			lon,
+			speed,
+			battery_level,
+			ignition,
+			payload,
+			created_at
+		FROM events
+		WHERE vehicle_id = $1
+		ORDER BY event_time DESC
+		LIMIT 1
+	`
+
+	var event domain.Event
+
+	err := r.pool.QueryRow(ctx, query, vehicleID).Scan(
+		&event.ID,
+		&event.DeviceID,
+		&event.VehicleID,
+		&event.EventType,
+		&event.EventTime,
+		&event.ReceivedAt,
+		&event.Lat,
+		&event.Lon,
+		&event.Speed,
+		&event.BatteryLevel,
+		&event.Ignition,
+		&event.Payload,
+		&event.CreatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.Event{}, apperrors.ErrNotFound
+		}
+
+		return domain.Event{}, fmt.Errorf("get latest event by vehicle id: %w", err)
 	}
 
 	return event, nil

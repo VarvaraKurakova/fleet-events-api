@@ -26,6 +26,8 @@ type EventRepository interface {
 		ignition *bool,
 		payload json.RawMessage,
 	) (domain.Event, error)
+
+	GetLatestByVehicleID(ctx context.Context, vehicleID uuid.UUID) (domain.Event, error)
 }
 
 type IngestEventRequest struct {
@@ -40,18 +42,26 @@ type IngestEventRequest struct {
 	Payload          json.RawMessage
 }
 
+type VehicleStateCache interface {
+	Set(ctx context.Context, state domain.VehicleState) error
+	Get(ctx context.Context, vehicleID uuid.UUID) (domain.VehicleState, error)
+}
+
 type EventService struct {
 	eventRepository  EventRepository
 	deviceRepository DeviceRepository
+	stateCache       VehicleStateCache
 }
 
 func NewEventService(
 	eventRepository EventRepository,
 	deviceRepository DeviceRepository,
+	stateCache VehicleStateCache,
 ) *EventService {
 	return &EventService{
 		eventRepository:  eventRepository,
 		deviceRepository: deviceRepository,
+		stateCache:       stateCache,
 	}
 }
 
@@ -102,6 +112,12 @@ func (s *EventService) Ingest(ctx context.Context, request IngestEventRequest) (
 	}
 
 	if err := s.deviceRepository.UpdateLastSeen(ctx, device.ID, event.EventTime); err != nil {
+		return domain.Event{}, err
+	}
+
+	state := vehicleStateFromEvent(event)
+
+	if err := s.stateCache.Set(ctx, state); err != nil {
 		return domain.Event{}, err
 	}
 

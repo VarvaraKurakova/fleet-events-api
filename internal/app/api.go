@@ -18,6 +18,7 @@ import (
 	httptransport "github.com/VarvaraKurakova/fleet-events-api/internal/http"
 	"github.com/VarvaraKurakova/fleet-events-api/internal/http/handlers"
 	"github.com/VarvaraKurakova/fleet-events-api/internal/repository/postgres"
+	redisrepo "github.com/VarvaraKurakova/fleet-events-api/internal/repository/redis"
 	"github.com/VarvaraKurakova/fleet-events-api/internal/service"
 )
 
@@ -60,14 +61,18 @@ func RunAPI(cfg config.Config, logger *slog.Logger) error {
 
 	vehicleRepository := postgres.NewVehicleRepository(postgresPool)
 	vehicleService := service.NewVehicleService(vehicleRepository, fleetRepository)
-	vehicleHandler := handlers.NewVehicleHandler(vehicleService)
 
 	deviceRepository := postgres.NewDeviceRepository(postgresPool)
 	deviceService := service.NewDeviceService(deviceRepository, vehicleRepository)
 	deviceHandler := handlers.NewDeviceHandler(deviceService)
 
 	eventRepository := postgres.NewEventRepository(postgresPool)
-	eventService := service.NewEventService(eventRepository, deviceRepository)
+
+	stateCache := redisrepo.NewVehicleStateCache(redisClient)
+	vehicleStateService := service.NewVehicleStateService(stateCache, eventRepository)
+	vehicleHandler := handlers.NewVehicleHandler(vehicleService, vehicleStateService)
+
+	eventService := service.NewEventService(eventRepository, deviceRepository, stateCache)
 	eventHandler := handlers.NewEventHandler(eventService)
 
 	router := httptransport.NewRouter(

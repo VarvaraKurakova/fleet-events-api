@@ -12,12 +12,17 @@ import (
 )
 
 type VehicleHandler struct {
-	service *service.VehicleService
+	service      *service.VehicleService
+	stateService *service.VehicleStateService
 }
 
-func NewVehicleHandler(service *service.VehicleService) *VehicleHandler {
+func NewVehicleHandler(
+	service *service.VehicleService,
+	stateService *service.VehicleStateService,
+) *VehicleHandler {
 	return &VehicleHandler{
-		service: service,
+		service:      service,
+		stateService: stateService,
 	}
 }
 
@@ -41,6 +46,19 @@ type VehicleResponse struct {
 
 type ListVehiclesResponse struct {
 	Items []VehicleResponse `json:"items"`
+}
+
+type VehicleStateResponse struct {
+	VehicleID    string   `json:"vehicle_id"`
+	DeviceID     string   `json:"device_id"`
+	EventID      string   `json:"event_id"`
+	Lat          *float64 `json:"lat,omitempty"`
+	Lon          *float64 `json:"lon,omitempty"`
+	Speed        *float64 `json:"speed,omitempty"`
+	BatteryLevel *float64 `json:"battery_level,omitempty"`
+	Ignition     *bool    `json:"ignition,omitempty"`
+	EventTime    string   `json:"event_time"`
+	ReceivedAt   string   `json:"received_at"`
 }
 
 func (h *VehicleHandler) Create(w http.ResponseWriter, r *http.Request) {
@@ -118,4 +136,33 @@ func toVehicleResponse(vehicle domain.Vehicle) VehicleResponse {
 		CreatedAt:   vehicle.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 		UpdatedAt:   vehicle.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
 	}
+}
+
+func (h *VehicleHandler) GetState(w http.ResponseWriter, r *http.Request) {
+	idParam := chi.URLParam(r, "id")
+
+	id, err := uuid.Parse(idParam)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid vehicle id")
+		return
+	}
+
+	state, err := h.stateService.Get(r.Context(), id)
+	if err != nil {
+		handleError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, VehicleStateResponse{
+		VehicleID:    state.VehicleID.String(),
+		DeviceID:     state.DeviceID.String(),
+		EventID:      state.EventID.String(),
+		Lat:          state.Lat,
+		Lon:          state.Lon,
+		Speed:        state.Speed,
+		BatteryLevel: state.BatteryLevel,
+		Ignition:     state.Ignition,
+		EventTime:    state.EventTime.Format("2006-01-02T15:04:05Z07:00"),
+		ReceivedAt:   state.ReceivedAt.Format("2006-01-02T15:04:05Z07:00"),
+	})
 }

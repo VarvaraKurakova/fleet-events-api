@@ -32,6 +32,7 @@ func NewRouter(
 
 		r.Post("/vehicles", vehicleHandler.Create)
 		r.Get("/vehicles", vehicleHandler.List)
+		r.Get("/vehicles/{id}/state", vehicleHandler.GetState)
 		r.Get("/vehicles/{id}", vehicleHandler.GetByID)
 		r.Post("/devices", deviceHandler.Create)
 		r.Get("/devices", deviceHandler.List)
