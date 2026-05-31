@@ -17,6 +17,7 @@ func NewRouter(
 	fleetHandler *handlers.FleetHandler,
 	vehicleHandler *handlers.VehicleHandler,
 	deviceHandler *handlers.DeviceHandler,
+	eventHandler *handlers.EventHandler,
 ) http.Handler {
 	r := chi.NewRouter()
 
@@ -35,6 +36,8 @@ func NewRouter(
 		r.Post("/devices", deviceHandler.Create)
 		r.Get("/devices", deviceHandler.List)
 		r.Get("/devices/{id}", deviceHandler.GetByID)
+
+		r.Post("/events", eventHandler.Create)
 	})
 
 	return r
