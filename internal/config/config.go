@@ -1,12 +1,16 @@
 package config
 
-import "os"
+import (
+	"os"
+	"strconv"
+)
 
 type Config struct {
 	HTTP         HTTPConfig
 	Postgres     PostgresConfig
 	Redis        RedisConfig
 	RabbitMQ     RabbitMQConfig
+	Worker       WorkerConfig
 	DeviceAPIKey string
 }
 
@@ -28,6 +32,11 @@ type RabbitMQConfig struct {
 	URL string
 }
 
+type WorkerConfig struct {
+	Concurrency int
+	Prefetch    int
+}
+
 func Load() Config {
 	return Config{
 		HTTP: HTTPConfig{
@@ -44,6 +53,10 @@ func Load() Config {
 		RabbitMQ: RabbitMQConfig{
 			URL: getEnv("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/"),
 		},
+		Worker: WorkerConfig{
+			Concurrency: getEnvAsInt("WORKER_CONCURRENCY", 4),
+			Prefetch:    getEnvAsInt("WORKER_PREFETCH", 4),
+		},
 		DeviceAPIKey: getEnv("DEVICE_API_KEY", "dev-api-key"),
 	}
 }
@@ -55,4 +68,18 @@ func getEnv(key string, fallback string) string {
 	}
 
 	return value
+}
+
+func getEnvAsInt(key string, fallback int) int {
+	value := os.Getenv(key)
+	if value == "" {
+		return fallback
+	}
+
+	parsedValue, err := strconv.Atoi(value)
+	if err != nil {
+		return fallback
+	}
+
+	return parsedValue
 }

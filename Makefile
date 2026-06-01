@@ -3,6 +3,9 @@ POSTGRES_DSN=postgres://fleet:fleet@localhost:5432/fleet_events?sslmode=disable
 run-api:
 	go run ./cmd/api
 
+run-worker:
+	go run ./cmd/worker
+
 up:
 	docker compose up -d
 
