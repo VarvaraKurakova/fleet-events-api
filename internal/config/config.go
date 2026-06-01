@@ -3,10 +3,11 @@ package config
 import "os"
 
 type Config struct {
-	HTTP     HTTPConfig
-	Postgres PostgresConfig
-	Redis    RedisConfig
-	RabbitMQ RabbitMQConfig
+	HTTP         HTTPConfig
+	Postgres     PostgresConfig
+	Redis        RedisConfig
+	RabbitMQ     RabbitMQConfig
+	DeviceAPIKey string
 }
 
 type HTTPConfig struct {
@@ -43,6 +44,7 @@ func Load() Config {
 		RabbitMQ: RabbitMQConfig{
 			URL: getEnv("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/"),
 		},
+		DeviceAPIKey: getEnv("DEVICE_API_KEY", "dev-api-key"),
 	}
 }
 

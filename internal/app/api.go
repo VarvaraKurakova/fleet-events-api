@@ -17,6 +17,7 @@ import (
 	"github.com/VarvaraKurakova/fleet-events-api/internal/health"
 	httptransport "github.com/VarvaraKurakova/fleet-events-api/internal/http"
 	"github.com/VarvaraKurakova/fleet-events-api/internal/http/handlers"
+	rabbitmqrepo "github.com/VarvaraKurakova/fleet-events-api/internal/messaging/rabbitmq"
 	"github.com/VarvaraKurakova/fleet-events-api/internal/repository/postgres"
 	redisrepo "github.com/VarvaraKurakova/fleet-events-api/internal/repository/redis"
 	"github.com/VarvaraKurakova/fleet-events-api/internal/service"
@@ -47,13 +48,13 @@ func RunAPI(cfg config.Config, logger *slog.Logger) error {
 		return err
 	}
 
-	rabbitConn, err := amqp091.Dial(cfg.RabbitMQ.URL)
+	rabbitMQConnection, err := amqp091.Dial(cfg.RabbitMQ.URL)
 	if err != nil {
 		return err
 	}
-	defer rabbitConn.Close()
+	defer rabbitMQConnection.Close()
 
-	checker := health.NewChecker(postgresPool, redisClient, rabbitConn)
+	checker := health.NewChecker(postgresPool, redisClient, rabbitMQConnection)
 
 	fleetRepository := postgres.NewFleetRepository(postgresPool)
 	fleetService := service.NewFleetService(fleetRepository)
@@ -72,12 +73,19 @@ func RunAPI(cfg config.Config, logger *slog.Logger) error {
 	vehicleStateService := service.NewVehicleStateService(stateCache, eventRepository)
 	vehicleHandler := handlers.NewVehicleHandler(vehicleService, vehicleStateService)
 
-	eventService := service.NewEventService(eventRepository, deviceRepository, stateCache)
+	eventPublisher := rabbitmqrepo.NewEventPublisher(rabbitMQConnection)
+	eventService := service.NewEventService(
+		eventRepository,
+		deviceRepository,
+		stateCache,
+		eventPublisher,
+	)
 	eventHandler := handlers.NewEventHandler(eventService)
 
 	router := httptransport.NewRouter(
 		logger,
 		checker,
+		cfg.DeviceAPIKey,
 		fleetHandler,
 		vehicleHandler,
 		deviceHandler,

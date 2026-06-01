@@ -14,6 +14,7 @@ import (
 func NewRouter(
 	logger *slog.Logger,
 	checker *health.Checker,
+	deviceAPIKey string,
 	fleetHandler *handlers.FleetHandler,
 	vehicleHandler *handlers.VehicleHandler,
 	deviceHandler *handlers.DeviceHandler,
@@ -38,7 +39,7 @@ func NewRouter(
 		r.Get("/devices", deviceHandler.List)
 		r.Get("/devices/{id}", deviceHandler.GetByID)
 
-		r.Post("/events", eventHandler.Create)
+		r.With(middleware.APIKey(deviceAPIKey)).Post("/events", eventHandler.Create)
 	})
 
 	return r

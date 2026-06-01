@@ -10,6 +10,7 @@ import (
 
 	"github.com/VarvaraKurakova/fleet-events-api/internal/apperrors"
 	"github.com/VarvaraKurakova/fleet-events-api/internal/domain"
+	"github.com/VarvaraKurakova/fleet-events-api/internal/messaging"
 )
 
 type EventRepository interface {
@@ -51,17 +52,24 @@ type EventService struct {
 	eventRepository  EventRepository
 	deviceRepository DeviceRepository
 	stateCache       VehicleStateCache
+	eventPublisher   EventPublisher
+}
+
+type EventPublisher interface {
+	PublishCreated(ctx context.Context, message messaging.EventCreatedMessage) error
 }
 
 func NewEventService(
 	eventRepository EventRepository,
 	deviceRepository DeviceRepository,
 	stateCache VehicleStateCache,
+	eventPublisher EventPublisher,
 ) *EventService {
 	return &EventService{
 		eventRepository:  eventRepository,
 		deviceRepository: deviceRepository,
 		stateCache:       stateCache,
+		eventPublisher:   eventPublisher,
 	}
 }
 
@@ -118,6 +126,22 @@ func (s *EventService) Ingest(ctx context.Context, request IngestEventRequest) (
 	state := vehicleStateFromEvent(event)
 
 	if err := s.stateCache.Set(ctx, state); err != nil {
+		return domain.Event{}, err
+	}
+
+	message := messaging.NewEventCreatedMessage(
+		event.ID.String(),
+		event.VehicleID.String(),
+		event.DeviceID.String(),
+		event.EventType,
+		event.EventTime,
+		event.Speed,
+		event.BatteryLevel,
+		event.Lat,
+		event.Lon,
+	)
+
+	if err := s.eventPublisher.PublishCreated(ctx, message); err != nil {
 		return domain.Event{}, err
 	}
 
