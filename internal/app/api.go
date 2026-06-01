@@ -69,6 +69,10 @@ func RunAPI(cfg config.Config, logger *slog.Logger) error {
 
 	eventRepository := postgres.NewEventRepository(postgresPool)
 
+	alertRepository := postgres.NewAlertRepository(postgresPool)
+	alertService := service.NewAlertService(alertRepository)
+	alertHandler := handlers.NewAlertHandler(alertService)
+
 	stateCache := redisrepo.NewVehicleStateCache(redisClient)
 	vehicleStateService := service.NewVehicleStateService(stateCache, eventRepository)
 	vehicleHandler := handlers.NewVehicleHandler(vehicleService, vehicleStateService)
@@ -90,6 +94,7 @@ func RunAPI(cfg config.Config, logger *slog.Logger) error {
 		vehicleHandler,
 		deviceHandler,
 		eventHandler,
+		alertHandler,
 	)
 
 	server := &http.Server{

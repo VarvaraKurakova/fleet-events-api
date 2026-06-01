@@ -158,3 +158,66 @@ func (r *EventRepository) GetLatestByVehicleID(
 
 	return event, nil
 }
+
+func (r *EventRepository) ListByVehicleID(
+	ctx context.Context,
+	vehicleID uuid.UUID,
+) ([]domain.Event, error) {
+	const query = `
+		SELECT
+			id,
+			device_id,
+			vehicle_id,
+			event_type,
+			event_time,
+			received_at,
+			lat,
+			lon,
+			speed,
+			battery_level,
+			ignition,
+			payload,
+			created_at
+		FROM events
+		WHERE vehicle_id = $1
+		ORDER BY event_time DESC
+	`
+
+	rows, err := r.pool.Query(ctx, query, vehicleID)
+	if err != nil {
+		return nil, fmt.Errorf("list events by vehicle id: %w", err)
+	}
+	defer rows.Close()
+
+	events := make([]domain.Event, 0)
+
+	for rows.Next() {
+		var event domain.Event
+
+		if err := rows.Scan(
+			&event.ID,
+			&event.DeviceID,
+			&event.VehicleID,
+			&event.EventType,
+			&event.EventTime,
+			&event.ReceivedAt,
+			&event.Lat,
+			&event.Lon,
+			&event.Speed,
+			&event.BatteryLevel,
+			&event.Ignition,
+			&event.Payload,
+			&event.CreatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan event: %w", err)
+		}
+
+		events = append(events, event)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate events: %w", err)
+	}
+
+	return events, nil
+}

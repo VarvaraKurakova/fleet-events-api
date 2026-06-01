@@ -29,11 +29,13 @@ func Logging(logger *slog.Logger) func(http.Handler) http.Handler {
 			start := time.Now()
 
 			recorder := newStatusRecorder(w)
+			requestID := GetRequestID(r.Context())
 
 			next.ServeHTTP(recorder, r)
 
 			logger.Info(
 				"http request",
+				"request_id", requestID,
 				"method", r.Method,
 				"path", r.URL.Path,
 				"status", recorder.statusCode,
