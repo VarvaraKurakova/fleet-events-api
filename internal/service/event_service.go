@@ -30,7 +30,11 @@ type EventRepository interface {
 
 	GetLatestByVehicleID(ctx context.Context, vehicleID uuid.UUID) (domain.Event, error)
 
-	ListByVehicleID(ctx context.Context, vehicleID uuid.UUID) ([]domain.Event, error)
+	ListByVehicleID(
+		ctx context.Context,
+		vehicleID uuid.UUID,
+		filter domain.EventListFilter,
+	) ([]domain.Event, error)
 }
 
 type IngestEventRequest struct {
@@ -153,10 +157,23 @@ func (s *EventService) Ingest(ctx context.Context, request IngestEventRequest) (
 func (s *EventService) ListByVehicleID(
 	ctx context.Context,
 	vehicleID uuid.UUID,
+	filter domain.EventListFilter,
 ) ([]domain.Event, error) {
 	if vehicleID == uuid.Nil {
 		return nil, apperrors.ErrInvalidInput
 	}
 
-	return s.eventRepository.ListByVehicleID(ctx, vehicleID)
+	if filter.Limit <= 0 {
+		filter.Limit = 50
+	}
+
+	if filter.Limit > 100 {
+		filter.Limit = 100
+	}
+
+	if filter.Offset < 0 {
+		filter.Offset = 0
+	}
+
+	return s.eventRepository.ListByVehicleID(ctx, vehicleID, filter)
 }

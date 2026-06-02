@@ -37,7 +37,29 @@ type AlertResponse struct {
 }
 
 func (h *AlertHandler) List(w http.ResponseWriter, r *http.Request) {
-	alerts, err := h.service.List(r.Context())
+	limit, offset := getLimitOffset(r)
+
+	var vehicleID *uuid.UUID
+	vehicleIDParam := r.URL.Query().Get("vehicle_id")
+	if vehicleIDParam != "" {
+		parsedVehicleID, err := uuid.Parse(vehicleIDParam)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid vehicle_id")
+			return
+		}
+
+		vehicleID = &parsedVehicleID
+	}
+
+	filter := domain.AlertListFilter{
+		Status:    r.URL.Query().Get("status"),
+		Type:      r.URL.Query().Get("type"),
+		VehicleID: vehicleID,
+		Limit:     limit,
+		Offset:    offset,
+	}
+
+	alerts, err := h.service.List(r.Context(), filter)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to list alerts")
 		return

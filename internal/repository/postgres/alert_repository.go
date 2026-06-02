@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -85,8 +86,8 @@ func (r *AlertRepository) Create(
 	return alert, nil
 }
 
-func (r *AlertRepository) List(ctx context.Context) ([]domain.Alert, error) {
-	const query = `
+func (r *AlertRepository) List(ctx context.Context, filter domain.AlertListFilter) ([]domain.Alert, error) {
+	query := `
 		SELECT
 			id,
 			vehicle_id,
@@ -99,10 +100,43 @@ func (r *AlertRepository) List(ctx context.Context) ([]domain.Alert, error) {
 			created_at,
 			resolved_at
 		FROM alerts
-		ORDER BY created_at DESC
 	`
 
-	rows, err := r.pool.Query(ctx, query)
+	conditions := make([]string, 0)
+	args := make([]any, 0)
+
+	if filter.Status != "" {
+		args = append(args, filter.Status)
+		conditions = append(conditions, fmt.Sprintf("status = $%d", len(args)))
+	}
+
+	if filter.Type != "" {
+		args = append(args, filter.Type)
+		conditions = append(conditions, fmt.Sprintf("type = $%d", len(args)))
+	}
+
+	if filter.VehicleID != nil {
+		args = append(args, *filter.VehicleID)
+		conditions = append(conditions, fmt.Sprintf("vehicle_id = $%d", len(args)))
+	}
+
+	if len(conditions) > 0 {
+		query += " WHERE " + strings.Join(conditions, " AND ")
+	}
+
+	args = append(args, filter.Limit)
+	limitPlaceholder := len(args)
+
+	args = append(args, filter.Offset)
+	offsetPlaceholder := len(args)
+
+	query += fmt.Sprintf(
+		" ORDER BY created_at DESC LIMIT $%d OFFSET $%d",
+		limitPlaceholder,
+		offsetPlaceholder,
+	)
+
+	rows, err := r.pool.Query(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("list alerts: %w", err)
 	}

@@ -22,3 +22,8 @@ type Event struct {
 	Payload      json.RawMessage
 	CreatedAt    time.Time
 }
+
+type EventListFilter struct {
+	Limit  int
+	Offset int
+}

@@ -24,5 +24,45 @@ services:
       - "5672:5672"
       - "15672:15672"
 
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fleet_events_api
+    command: [ "/app/api" ]
+    restart: unless-stopped
+    environment:
+      HTTP_ADDR: ":8080"
+      POSTGRES_DSN: "postgres://fleet:fleet@postgres:5432/fleet_events?sslmode=disable"
+      REDIS_ADDR: "redis:6379"
+      REDIS_PASSWORD: ""
+      REDIS_DB: "0"
+      RABBITMQ_URL: "amqp://guest:guest@rabbitmq:5672/"
+      DEVICE_API_KEY: "dev-api-key"
+      WORKER_CONCURRENCY: "4"
+      WORKER_PREFETCH: "4"
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+      - redis
+      - rabbitmq
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fleet_events_worker
+    command: [ "/app/worker" ]
+    restart: unless-stopped
+    environment:
+      POSTGRES_DSN: "postgres://fleet:fleet@postgres:5432/fleet_events?sslmode=disable"
+      RABBITMQ_URL: "amqp://guest:guest@rabbitmq:5672/"
+      WORKER_CONCURRENCY: "4"
+      WORKER_PREFETCH: "4"
+    depends_on:
+      - postgres
+      - rabbitmq
+
 volumes:
   postgres_data:

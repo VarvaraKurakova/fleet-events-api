@@ -162,28 +162,30 @@ func (r *EventRepository) GetLatestByVehicleID(
 func (r *EventRepository) ListByVehicleID(
 	ctx context.Context,
 	vehicleID uuid.UUID,
+	filter domain.EventListFilter,
 ) ([]domain.Event, error) {
 	const query = `
-		SELECT
-			id,
-			device_id,
-			vehicle_id,
-			event_type,
-			event_time,
-			received_at,
-			lat,
-			lon,
-			speed,
-			battery_level,
-			ignition,
-			payload,
-			created_at
-		FROM events
-		WHERE vehicle_id = $1
-		ORDER BY event_time DESC
+	SELECT
+		id,
+		device_id,
+		vehicle_id,
+		event_type,
+		event_time,
+		received_at,
+		lat,
+		lon,
+		speed,
+		battery_level,
+		ignition,
+		payload,
+		created_at
+	FROM events
+	WHERE vehicle_id = $1
+	ORDER BY event_time DESC
+	LIMIT $2 OFFSET $3
 	`
 
-	rows, err := r.pool.Query(ctx, query, vehicleID)
+	rows, err := r.pool.Query(ctx, query, vehicleID, filter.Limit, filter.Offset)
 	if err != nil {
 		return nil, fmt.Errorf("list events by vehicle id: %w", err)
 	}

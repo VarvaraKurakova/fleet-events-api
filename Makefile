@@ -32,3 +32,21 @@ test-race:
 
 tidy:
 	go mod tidy
+
+docker-up:
+	docker compose up --build
+
+docker-up-d:
+	docker compose up --build -d
+
+docker-down:
+	docker compose down
+
+docker-logs:
+	docker compose logs -f
+
+docker-logs-api:
+	docker compose logs -f api
+
+docker-logs-worker:
+	docker compose logs -f worker

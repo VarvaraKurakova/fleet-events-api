@@ -19,6 +19,14 @@ type Alert struct {
 	ResolvedAt *time.Time
 }
 
+type AlertListFilter struct {
+	Status    string
+	Type      string
+	VehicleID *uuid.UUID
+	Limit     int
+	Offset    int
+}
+
 const (
 	AlertTypeSpeedLimitExceeded = "speed_limit_exceeded"
 	AlertTypeLowBattery         = "low_battery"

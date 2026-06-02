@@ -26,8 +26,16 @@ type AlertRepository interface {
 		severity string,
 		message string,
 	) (domain.Alert, error)
-	List(ctx context.Context) ([]domain.Alert, error)
+	List(ctx context.Context, filter domain.AlertListFilter) ([]domain.Alert, error)
 	Resolve(ctx context.Context, id uuid.UUID) (domain.Alert, error)
+}
+
+type AlertListFilter struct {
+	Status    string
+	Type      string
+	VehicleID *uuid.UUID
+	Limit     int
+	Offset    int
 }
 
 type AlertService struct {
@@ -115,8 +123,20 @@ func (s *AlertService) ProcessEvent(
 	return alerts, nil
 }
 
-func (s *AlertService) List(ctx context.Context) ([]domain.Alert, error) {
-	return s.alertRepository.List(ctx)
+func (s *AlertService) List(ctx context.Context, filter domain.AlertListFilter) ([]domain.Alert, error) {
+	if filter.Limit <= 0 {
+		filter.Limit = 50
+	}
+
+	if filter.Limit > 100 {
+		filter.Limit = 100
+	}
+
+	if filter.Offset < 0 {
+		filter.Offset = 0
+	}
+
+	return s.alertRepository.List(ctx, filter)
 }
 
 func (s *AlertService) Resolve(ctx context.Context, id uuid.UUID) (domain.Alert, error) {

@@ -117,7 +117,14 @@ func (h *EventHandler) ListByVehicleID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	events, err := h.service.ListByVehicleID(r.Context(), vehicleID)
+	limit, offset := getLimitOffset(r)
+
+	filter := domain.EventListFilter{
+		Limit:  limit,
+		Offset: offset,
+	}
+
+	events, err := h.service.ListByVehicleID(r.Context(), vehicleID, filter)
 	if err != nil {
 		if errors.Is(err, apperrors.ErrInvalidInput) {
 			writeError(w, http.StatusBadRequest, "invalid input")
